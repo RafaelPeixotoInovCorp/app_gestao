@@ -50,6 +50,17 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+        if ($user && ! $user->is_active) {
+            Auth::logout();
+
+            RateLimiter::clear($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Esta conta está inativa.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

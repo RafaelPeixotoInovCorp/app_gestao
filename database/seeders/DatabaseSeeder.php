@@ -2,11 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Models\Tenant;
 use App\Models\User;
-use App\Support\Modules;
+use App\Services\TenantContext;
+use App\Services\TenantRoleProvisioner;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
@@ -18,22 +20,32 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        DB::table('roles')->where('name', 'operador')->update(['name' => 'operacional']);
 
-        foreach (Modules::ITEMS as $module) {
-            Permission::firstOrCreate(['name' => "module.{$module['key']}.view"]);
-            Permission::firstOrCreate(['name' => "module.{$module['key']}.create"]);
-            Permission::firstOrCreate(['name' => "module.{$module['key']}.update"]);
-            Permission::firstOrCreate(['name' => "module.{$module['key']}.delete"]);
-        }
+        $tenant = Tenant::query()->firstOrCreate(
+            ['slug' => 'organizacao-principal'],
+            ['name' => 'Organização principal', 'settings' => []],
+        );
 
-        $admin = User::firstOrCreate([
+        TenantRoleProvisioner::syncForTenant($tenant);
+
+        $adminUser = User::firstOrCreate([
             'email' => 'admin@example.com',
         ], [
             'name' => 'Administrador',
             'password' => 'password',
         ]);
 
-        $admin->assignRole($adminRole);
+        if (! $adminUser->tenants()->whereKey($tenant->id)->exists()) {
+            $adminUser->tenants()->attach($tenant->id, ['role' => 'owner']);
+        }
+
+        app(TenantContext::class)->set($tenant);
+        if (! $adminUser->hasRole('admin')) {
+            $adminUser->assignRole(Role::findByName('admin', 'web'));
+        }
+        app(TenantContext::class)->set(null);
+
+        $adminUser->forceFill(['last_tenant_id' => $tenant->id])->save();
     }
 }

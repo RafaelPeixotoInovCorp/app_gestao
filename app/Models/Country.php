@@ -9,5 +9,6 @@ class Country extends Model
     protected $fillable = [
         'name',
         'iso_alpha_2',
+        'iso_alpha_3',
     ];
 }

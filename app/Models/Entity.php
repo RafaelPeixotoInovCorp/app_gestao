@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use App\Services\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,9 +12,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Entity extends Model
 {
+    use BelongsToTenant;
     use SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
         'is_client',
         'is_supplier',
         'name',
@@ -32,6 +36,25 @@ class Entity extends Model
             if (! $entity->number) {
                 $entity->number = (int) static::withTrashed()->max('number') + 1;
             }
+        });
+
+        /*
+         * nif_hash has a UNIQUE constraint across all rows. Soft-deleted rows must release the hash so the same NIF
+         * can be stored again; the validator excludes trashed rows, so omitting this caused UNIQUE crashes on insert.
+         */
+        static::deleted(function (Entity $entity): void {
+            if ($entity->isForceDeleting()) {
+                return;
+            }
+
+            static::withTrashed()
+                ->whereKey($entity->getKey())
+                ->whereNotNull('deleted_at')
+                ->update(['nif_hash' => null]);
+        });
+
+        static::restoring(function (Entity $entity): void {
+            $entity->nif_hash = static::hashNif($entity->decryptedNif());
         });
     }
 
@@ -109,5 +132,14 @@ class Entity extends Model
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?: $this->getRouteKeyName();
+
+        return $this->where($field, $value)
+            ->where('tenant_id', app(TenantContext::class)->id())
+            ->firstOrFail();
     }
 }

@@ -209,7 +209,7 @@ class EntityController extends Controller
         $slug = $data['is_client'] ? 'clients' : 'suppliers';
 
         return redirect()->route('modules.show', ['slug' => $slug])
-            ->with('success', 'Entidade actualizada com sucesso.');
+            ->with('success', 'Entidade atualizada com sucesso.');
     }
 
     public function destroy(Request $request, Entity $entity): RedirectResponse

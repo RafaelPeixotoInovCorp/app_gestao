@@ -6,10 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, ref, watch } from 'vue';
-import { toast } from 'vue-sonner';
 
 const props = defineProps({
     entity: { type: Object, default: null },
@@ -17,7 +16,6 @@ const props = defineProps({
     defaultKind: { type: String, default: 'client' },
 });
 
-const page = usePage();
 const isEdit = computed(() => props.entity !== null);
 
 const gdprSelect = ref(
@@ -55,23 +53,31 @@ watch(gdprSelect, (v) => {
     }
 });
 
-watch(
-    () => page.props.flash?.success,
-    (msg) => {
-        if (msg) {
-            toast.success(msg);
-        }
-    },
-);
-
+const viesFeedback = ref(null);
 const viesLoading = ref(false);
 
+/** Aceita colagens tipo PT123456789 ou com espaços; mantém só dígitos (máx. 9). */
+function normalizePortugueseNif(raw) {
+    const digits = String(raw ?? '').replace(/\D/g, '');
+    return digits.slice(0, 9);
+}
+
+function onNifInput(e) {
+    form.nif = normalizePortugueseNif(e?.target?.value ?? form.nif);
+    viesFeedback.value = null;
+}
+
 async function lookupVies() {
+    form.nif = normalizePortugueseNif(form.nif);
     if (!/^\d{9}$/.test(String(form.nif))) {
-        toast.error('Introduza um NIF português válido (9 dígitos) antes de consultar o VIES.');
+        viesFeedback.value = {
+            variant: 'error',
+            text: 'Introduza um NIF português válido (9 dígitos) antes de consultar o VIES.',
+        };
         return;
     }
     viesLoading.value = true;
+    viesFeedback.value = null;
     try {
         const { data } = await axios.post(route('entities.vies'), {
             country: 'PT',
@@ -84,18 +90,28 @@ async function lookupVies() {
             if (data.address) {
                 form.address = String(data.address).replace(/\r?\n+/g, '\n').trim();
             }
-            toast.success('Dados obtidos via VIES.');
+            if (data.name || data.address) {
+                viesFeedback.value = { variant: 'success', text: 'Dados obtidos via VIES.' };
+            } else {
+                viesFeedback.value = {
+                    variant: 'success',
+                    text: 'NIF válido no VIES; nome e morada não foram divulgados pelo estado-membro (limitações de privacidade).',
+                };
+            }
         } else {
-            toast.error(data.fault || 'NIF não validado no VIES.');
+            const msg = data.fault || 'NIF não validado no VIES.';
+            const hint = typeof data.hint === 'string' ? data.hint.trim() : '';
+            viesFeedback.value = { variant: 'error', text: msg, detail: hint || undefined };
         }
     } catch {
-        toast.error('Não foi possível consultar o VIES.');
+        viesFeedback.value = { variant: 'error', text: 'Não foi possível consultar o VIES.' };
     } finally {
         viesLoading.value = false;
     }
 }
 
 function submit() {
+    form.nif = normalizePortugueseNif(form.nif);
     const mapPayload = (data) => ({
         ...data,
         country_id:
@@ -149,10 +165,12 @@ const backSlug = computed(() =>
                                         <Input
                                             id="nif"
                                             v-model="form.nif"
-                                            maxlength="9"
+                                            maxlength="14"
                                             inputmode="numeric"
                                             autocomplete="off"
                                             class="sm:max-w-xs"
+                                            @blur="form.nif = normalizePortugueseNif(form.nif)"
+                                            @input="onNifInput"
                                         />
                                         <Button
                                             type="button"
@@ -165,6 +183,36 @@ const backSlug = computed(() =>
                                     </div>
                                     <p v-if="form.errors.nif" class="text-sm text-destructive">
                                         {{ form.errors.nif }}
+                                    </p>
+                                    <div
+                                        v-if="viesFeedback"
+                                        class="rounded-lg border px-3 py-2 text-sm"
+                                        :class="
+                                            viesFeedback.variant === 'success'
+                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                                                : 'border-red-200 bg-red-50 text-red-800'
+                                        "
+                                        role="status"
+                                    >
+                                        <p class="font-medium">{{ viesFeedback.text }}</p>
+                                        <p v-if="viesFeedback.detail" class="mt-1 text-xs leading-relaxed opacity-90">
+                                            {{ viesFeedback.detail }}
+                                        </p>
+                                    </div>
+                                    <p class="text-xs leading-relaxed text-muted-foreground">
+                                        O VIES não é «validação do NIF nas Finanças»: só indica se existe número de IVA
+                                        intracomunitário. Por isso o seu próprio NIF pode falhar aqui e estar correto para IRS/IRC.
+                                        Pode colar
+                                        <span class="font-medium text-foreground/80">PT123456789</span>
+                                        — extraímos só os 9 dígitos.
+                                        <a
+                                            class="ml-1 font-medium text-primary underline-offset-2 hover:underline"
+                                            href="https://ec.europa.eu/taxation_customs/vies/#/vat-validation"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Verificador oficial da UE
+                                        </a>
                                     </p>
                                 </div>
                             </div>
@@ -259,7 +307,7 @@ const backSlug = computed(() =>
                             </div>
 
                             <div class="space-y-2">
-                                <Label for="website">Website</Label>
+                                <Label for="website">Sítio na Web</Label>
                                 <Input id="website" v-model="form.website" />
                                 <p v-if="form.errors.website" class="text-sm text-destructive">
                                     {{ form.errors.website }}

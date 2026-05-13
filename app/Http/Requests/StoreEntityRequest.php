@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Entity;
+use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEntityRequest extends FormRequest
@@ -52,12 +53,13 @@ class StoreEntityRequest extends FormRequest
     {
         $validator->after(function ($validator): void {
             if (! $this->boolean('is_client') && ! $this->boolean('is_supplier')) {
-                $validator->errors()->add('is_client', 'Seleccione Cliente e/ou Fornecedor.');
+                $validator->errors()->add('is_client', 'Escolha Cliente e/ou Fornecedor.');
             }
 
             if ($this->filled('nif') && preg_match('/^\d{9}$/', (string) $this->input('nif'))) {
                 $hash = Entity::hashNif($this->input('nif'));
-                if (Entity::query()->where('nif_hash', $hash)->whereNull('deleted_at')->exists()) {
+                $tid = app(TenantContext::class)->id();
+                if ($tid !== null && Entity::query()->where('tenant_id', $tid)->where('nif_hash', $hash)->whereNull('deleted_at')->exists()) {
                     $validator->errors()->add('nif', 'Este NIF já está registado.');
                 }
             }

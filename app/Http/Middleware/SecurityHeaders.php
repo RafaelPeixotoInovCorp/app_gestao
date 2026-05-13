@@ -22,7 +22,19 @@ class SecurityHeaders
         $response->headers->set('X-XSS-Protection', '1; mode=block');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-        $response->headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
+
+        // CSP estrita quebra: Vite em modo dev (public/hot → scripts em localhost:5173),
+        // fonts.bunny.net no layout, e prefetch/modulepreload em alguns browsers → página em branco.
+        if (app()->isProduction()) {
+            $response->headers->set('Content-Security-Policy', implode('; ', [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-inline'",
+                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
+                "font-src 'self' https://fonts.bunny.net data:",
+                "img-src 'self' data: blob:",
+                "connect-src 'self'",
+            ]));
+        }
 
         return $response;
     }

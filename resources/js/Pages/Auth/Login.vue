@@ -5,7 +5,9 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
 
 defineProps({
     canResetPassword: {
@@ -35,6 +37,10 @@ const submit = () => {
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
             {{ status }}
+        </div>
+
+        <div v-if="page.props.flash?.error" class="mb-4 text-sm font-medium text-red-600">
+            {{ page.props.flash.error }}
         </div>
 
         <form @submit.prevent="submit">

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Entity;
+use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateEntityRequest extends FormRequest
@@ -52,23 +53,24 @@ class UpdateEntityRequest extends FormRequest
     {
         $validator->after(function ($validator): void {
             if (! $this->boolean('is_client') && ! $this->boolean('is_supplier')) {
-                $validator->errors()->add('is_client', 'Seleccione Cliente e/ou Fornecedor.');
+                $validator->errors()->add('is_client', 'Escolha Cliente e/ou Fornecedor.');
             }
 
             $entity = $this->route('entity');
             if ($entity && $this->filled('nif') && preg_match('/^\d{9}$/', (string) $this->input('nif'))) {
                 $hash = Entity::hashNif($this->input('nif'));
-                if (Entity::query()->where('nif_hash', $hash)->whereNull('deleted_at')->where('id', '!=', $entity->id)->exists()) {
+                $tid = app(TenantContext::class)->id();
+                if ($tid !== null && Entity::query()->where('tenant_id', $tid)->where('nif_hash', $hash)->whereNull('deleted_at')->where('id', '!=', $entity->id)->exists()) {
                     $validator->errors()->add('nif', 'Este NIF já está registado.');
                 }
             }
 
             $user = $this->user();
             if ($this->boolean('is_client') && ! $user->hasRole('admin') && ! $user->can('module.clients.update')) {
-                $validator->errors()->add('is_client', 'Sem permissão para actualizar clientes.');
+                $validator->errors()->add('is_client', 'Sem permissão para atualizar clientes.');
             }
             if ($this->boolean('is_supplier') && ! $user->hasRole('admin') && ! $user->can('module.suppliers.update')) {
-                $validator->errors()->add('is_supplier', 'Sem permissão para actualizar fornecedores.');
+                $validator->errors()->add('is_supplier', 'Sem permissão para atualizar fornecedores.');
             }
         });
     }

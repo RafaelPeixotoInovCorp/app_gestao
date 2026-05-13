@@ -10,9 +10,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { toast } from 'vue-sonner';
-import { reactive, watch } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { reactive } from 'vue';
 
 const props = defineProps({
     module: { type: Object, required: true },
@@ -24,22 +23,11 @@ const props = defineProps({
     canDelete: { type: Boolean, default: false },
 });
 
-const page = usePage();
 const filterForm = reactive({
     q: props.filters?.q ?? '',
     status: props.filters?.status ?? 'all',
     sort: props.filters?.sort ?? 'latest',
 });
-
-watch(
-    () => page.props.flash?.success,
-    (msg) => {
-        if (msg) {
-            toast.success(msg);
-        }
-    },
-    { immediate: true },
-);
 
 function destroyEntity(id) {
     if (!confirm('Remover esta entidade?')) {
@@ -90,7 +78,7 @@ function applyFilters() {
                     <input
                         v-model="filterForm.q"
                         type="text"
-                        placeholder="Pesquisar nome, email, website..."
+                        placeholder="Pesquisar por nome, e-mail ou sítio na Web…"
                         class="h-10 rounded-md border border-input bg-background px-3 text-sm"
                         @keyup.enter="applyFilters"
                     />
@@ -116,7 +104,7 @@ function applyFilters() {
                                 <TableHead>Nome</TableHead>
                                 <TableHead>Telefone</TableHead>
                                 <TableHead>Telemóvel</TableHead>
-                                <TableHead>Website</TableHead>
+                                <TableHead>Sítio na Web</TableHead>
                                 <TableHead>E-mail</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead class="text-end">Ações</TableHead>

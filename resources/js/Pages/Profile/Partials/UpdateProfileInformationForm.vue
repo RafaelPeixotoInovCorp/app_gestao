@@ -30,7 +30,7 @@ const form = useForm({
             </h2>
 
             <p class="mt-1 text-sm text-gray-600">
-                Atualize os dados do perfil e o endereço de e-mail da sua conta.
+                Atualize os dados de perfil e o endereço de correio eletrónico da sua conta.
             </p>
         </header>
 
@@ -71,14 +71,14 @@ const form = useForm({
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
                 <p class="mt-2 text-sm text-gray-800">
-                    O seu endereço de e-mail não está verificado.
+                    O seu endereço de correio eletrónico não está verificado.
                     <Link
                         :href="route('verification.send')"
                         method="post"
                         as="button"
                         class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                        Clique aqui para reenviar o e-mail de verificação.
+                        Carregue aqui para voltar a enviar o e-mail de verificação.
                     </Link>
                 </p>
 
@@ -86,7 +86,7 @@ const form = useForm({
                     v-show="status === 'verification-link-sent'"
                     class="mt-2 text-sm font-medium text-green-600"
                 >
-                    Foi enviado um novo link de verificação para o seu e-mail.
+                    Foi enviado um novo link de verificação para o seu endereço de correio eletrónico.
                 </div>
             </div>
 

@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { toast } from 'vue-sonner';
-import { computed, ref, watch } from 'vue';
+import { Head, router, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     module: { type: Object, required: true },
@@ -17,16 +16,6 @@ const props = defineProps({
     canUpdate: { type: Boolean, default: false },
     canDelete: { type: Boolean, default: false },
 });
-
-const page = usePage();
-
-watch(
-    () => page.props.flash?.success,
-    (msg) => {
-        if (msg) toast.success(msg);
-    },
-    { immediate: true },
-);
 
 const form = useForm({
     title: '',
